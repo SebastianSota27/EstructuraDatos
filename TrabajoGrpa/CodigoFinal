@@ -73,3 +73,85 @@ void mostrarListaGeneral() {
         aux = aux->sig;
     }
 }
+void buscarProceso() {
+    if (listaGeneral == NULL) {
+        cout << "No hay procesos registrados para buscar." << endl;
+        return;
+    }
+    int modo;
+    cout << "1. Buscar por ID | 2. Buscar por Nombre: ";
+    cin >> modo;
+
+    Nodo* aux = listaGeneral;
+    bool encontrado = false;
+
+    if (modo == 1) {
+        int idB; cout << "Ingrese ID a buscar: "; cin >> idB;
+        while (aux != NULL) {
+            if (aux->entrada.id == idB) {
+                cout << "Encontrado -> Nombre: " << aux->entrada.nombre << " | Estado: " << aux->entrada.estado << endl;
+                encontrado = true;
+                break;
+            }
+            aux = aux->sig;
+        }
+    } else {
+        string nomB; cout << "Ingrese Nombre a buscar: "; cin >> nomB;
+        while (aux != NULL) {
+            if (aux->entrada.nombre == nomB) {
+                cout << "Encontrado -> ID: " << aux->entrada.id << " | Estado: " << aux->entrada.estado << endl;
+                encontrado = true;
+            }
+            aux = aux->sig;
+        }
+    }
+    if (!encontrado) cout << "Proceso no encontrado." << endl;
+}
+
+void modificarPrioridad() {
+    int idB;
+    cout << "Ingrese ID del proceso a modificar: ";
+    cin >> idB;
+
+    Nodo* aux = listaGeneral;
+    while (aux != NULL) {
+        if (aux->entrada.id == idB) {
+            cout << "Prioridad actual: " << aux->entrada.prioridad << endl;
+            cout << "Ingrese nueva prioridad (Alta, Media, Baja): ";
+            cin >> aux->entrada.prioridad;
+            cout << "Prioridad cambiada correctamente." << endl;
+            return;
+        }
+        aux = aux->sig;
+    }
+    cout << "No se encontro el proceso." << endl;
+}
+
+void eliminarProceso() {
+    int idB;
+    cout << "Ingrese ID del proceso a eliminar: ";
+    cin >> idB;
+
+    Nodo* actual = listaGeneral;
+    Nodo* anterior = NULL;
+
+    while (actual != NULL && actual->entrada.id != idB) {
+        anterior = actual;
+        actual = actual->sig;
+    }
+
+    if (actual == NULL) {
+        cout << "Proceso no encontrado." << endl;
+        return;
+    }
+
+    if (anterior == NULL) { 
+        listaGeneral = listaGeneral->sig;
+    } else {
+        anterior->sig = actual->sig;
+    }
+
+    cout << "Proceso " << actual->entrada.nombre << " eliminado de la lista." << endl;
+    delete actual; // liberar memoria
+}
+
