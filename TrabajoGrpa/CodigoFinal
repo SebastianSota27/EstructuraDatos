@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 struct Proceso {
@@ -73,6 +74,7 @@ void mostrarListaGeneral() {
         aux = aux->sig;
     }
 }
+
 void buscarProceso() {
     if (listaGeneral == NULL) {
         cout << "No hay procesos registrados para buscar." << endl;
@@ -155,3 +157,224 @@ void eliminarProceso() {
     delete actual; // liberar memoria
 }
 
+// OPERACIONES DE LA COLA
+
+void enviarAColaCPU() {
+    Nodo* aux = listaGeneral;
+    int contador = 0;
+
+    while (aux != NULL) {
+        if (aux->entrada.estado == "Listo") {
+            
+            Nodo* nuevoNodo = new Nodo();
+            nuevoNodo->entrada = aux->entrada;
+            nuevoNodo->sig = NULL;
+
+            if (primeroCPU == NULL) { 
+                primeroCPU = ultimoCPU = nuevoNodo;
+            } 
+            else if (nuevoNodo->entrada.prioridad == "Alta" && primeroCPU->entrada.prioridad != "Alta") {
+                //nuevo proceso es de prioridad alta va al frente de la cola
+                nuevoNodo->sig = primeroCPU;
+                primeroCPU = nuevoNodo;
+            } 
+            else {
+                //se encola al final respetando el orden de llegada -> FIFO
+                ultimoCPU->sig = nuevoNodo;
+                ultimoCPU = nuevoNodo;
+            }
+
+            aux->entrada.estado = "En Espera"; // Modificamos el estado en la lista base
+            contador++;
+        }
+        aux = aux->sig;
+    }
+    cout << "Se enviaron " << contador << " procesos a la Cola de CPU." << endl;
+}
+
+void mostrarColaCPU() {
+    if (primeroCPU == NULL) {
+        cout << "La cola de CPU esta vacia." << endl;
+        return;
+    }
+    Nodo* aux = primeroCPU;
+    cout << "\n--- COLA DE PLANIFICACIÓN DEL CPU ---" << endl;
+    while (aux != NULL) {
+        cout << "[ID: " << aux->entrada.id << " | Proceso: " << aux->entrada.nombre 
+             << " | Prioridad: " << aux->entrada.prioridad << "]" << endl;
+        aux = aux->sig;
+    }
+}
+
+void ejecutarEnCPU() {
+    if (primeroCPU == NULL) {
+        cout << "No hay procesos en la cola para ejecutar." << endl;
+        return;
+    }
+
+    // Desencola el nodo que está al frente de la cola
+    Nodo* temp = primeroCPU;
+    Proceso procesoEjecutado = temp->entrada;
+    
+    primeroCPU = primeroCPU->sig;
+    if (primeroCPU == NULL) {
+        ultimoCPU = NULL;
+    }
+    delete temp;
+
+    cout << ">> [CPU] Ejecutando: " << procesoEjecutado.nombre << "..." << endl;
+    cout << "Proceso terminado exitosamente." << endl;
+
+    //modifica su estado en la lista general a finalizado
+    Nodo* aux = listaGeneral;
+    while (aux != NULL) {
+        if (aux->entrada.id == procesoEjecutado.id) {
+            aux->entrada.estado = "Finalizado";
+            break;
+        }
+        aux = aux->sig;
+    }
+
+    //apilar en el Historial de memoria -> pila LIFO
+    Nodo* nuevoNodoPila = new Nodo();
+    nuevoNodoPila->entrada = procesoEjecutado;
+    
+    // Insertar arriba en la pila osea apilar
+    nuevoNodoPila->sig = topeHistorial;
+    topeHistorial = nuevoNodoPila;
+}
+
+// OPERACIONES DE LA PILA - HISTORIAL
+
+void mostrarHistorialPila() {
+    if (topeHistorial == NULL) {
+        cout << "El historial de memoria liberada esta vacio." << endl;
+        return;
+    }
+    Nodo* aux = topeHistorial;
+    cout << "\n--- HISTORIAL DE MEMORIA LIBERADA (PILA LIFO) ---" << endl;
+    while (aux != NULL) {
+        cout << "<- [ID: " << aux->entrada.id << " | Nombre: " << aux->entrada.nombre 
+             << " | Memoria Liberada: " << aux->entrada.memoria << " KB]" << endl;
+        aux = aux->sig;
+    }
+}
+
+void desapilarHistorial() {
+    if (topeHistorial == NULL) {
+        cout << "La pila del historial ya esta vacia." << endl;
+        return;
+    }
+    Nodo* temp = topeHistorial;
+    cout << "Quitando de la cima de la Pila -> Registro de: " << temp->entrada.nombre << endl;
+    topeHistorial = topeHistorial->sig; // El tope se mueve al nodo de abajo
+    delete temp;                        // Borra el antiguo nodo superior
+}
+
+//Guardado de datos
+
+void guardarEnArchivo() {
+    ofstream archivo("datos.txt"); //abrir el archivo datos.txt
+    if (!archivo) {
+        cout << "Error al generar el archivo de persistencia." << endl;
+        return;
+    }
+
+    Nodo* temp = listaGeneral;
+    while (temp != NULL) {
+        archivo << temp->entrada.id << " "
+                << temp->entrada.nombre << " "
+                << temp->entrada.prioridad << " "
+                << temp->entrada.memoria << " "
+                << temp->entrada.estado << "\n";
+        temp = temp->sig;
+    }
+    archivo.close();
+    cout << "Datos del sistema respaldados exitosamente en 'datos.txt'." << endl;
+}
+
+void cargarDesdeArchivo() {
+    ifstream archivo("datos.txt");
+    if (!archivo) {
+        cout << "No hay archivo previo, iniciando sistema en limpio" << endl;
+        return;
+    }
+
+    int id, memoria;
+    string nombre, prioridad, estado;
+
+    //leer los datos directamente respetando las variables
+    while (archivo >> id >> nombre >> prioridad >> memoria >> estado) {
+        Nodo* nuevo = new Nodo();
+        nuevo->entrada.id = id;
+        nuevo->entrada.nombre = nombre;
+        nuevo->entrada.prioridad = prioridad;
+        nuevo->entrada.memoria = memoria;
+        nuevo->entrada.estado = estado;
+
+        nuevo->sig = listaGeneral;
+        listaGeneral = nuevo;
+    }
+    archivo.close();
+    cout << "¡Estructuras cargadas correctamente desde 'datos.txt'!" << endl;
+}
+
+// MENÚ PRINCIPAL
+int main() {
+	setlocale(LC_CTYPE,"Spanish");
+    //carga de datos almacenados
+    cargarDesdeArchivo();
+
+    int op;
+    do {
+        cout << "*****SISTEMA DE GESTION DE PROCESOS*****" << endl;
+        cout << "1. Registrar Proceso" << endl;
+        cout << "2. Mostrar Lista General de Procesos" << endl;
+        cout << "3. Buscar Proceso" << endl;
+        cout << "4. Modificar Prioridad de un Proceso" << endl;
+        cout << "5. Eliminar Proceso de la Lista" << endl;
+        cout << "6. Enviar Procesos 'Listo' a Cola de CPU" << endl;
+        cout << "7. Ver Cola de Prioridad" << endl;
+        cout << "8. Ejecutar Proceso en CPU" << endl;
+        cout << "9. Ver Historial de Memoria" << endl;
+        cout << "10. Quitar de la Pila" << endl;
+        cout << "11. Guardar Todo" << endl;
+        cout << "12. Salir" << endl;
+        cout << "Elija una opcion: ";
+        cin >> op;
+
+        switch(op) {
+            case 1: registrarProceso(); 
+			break;
+            case 2: mostrarListaGeneral(); 
+			break;
+            case 3: buscarProceso(); 
+			break;
+            case 4: modificarPrioridad(); 
+			break;
+            case 5: eliminarProceso(); 
+			break;
+            case 6: enviarAColaCPU(); 
+			break;
+            case 7: mostrarColaCPU(); 
+			break;
+            case 8: ejecutarEnCPU(); 
+			break;
+            case 9: mostrarHistorialPila(); 
+			break;
+            case 10: desapilarHistorial(); 
+			break;
+            case 11: guardarEnArchivo(); 
+			break;
+			case 12: cout << "Hasta Pronto..." << endl;
+			break; 
+            default: cout << "Opcion incorrecta." << endl; 
+			break;
+        }
+        system("pause");
+        system("cls");
+    } 
+	while(op != 12);
+
+    return 0;
+}
