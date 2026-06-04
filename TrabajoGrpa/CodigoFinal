@@ -1,0 +1,75 @@
+#include <iostream>
+using namespace std;
+
+struct Proceso {
+    int id;
+    string nombre;
+    string prioridad;
+    int memoria;
+    string estado;
+};
+
+struct Nodo {
+    Proceso entrada;
+    Nodo* sig;
+};
+
+Nodo* listaGeneral = NULL;                  // Cabeza de la Lista General
+Nodo* primeroCPU = NULL, *ultimoCPU = NULL; // Punteros para la Cola de CPU
+Nodo* topeHistorial = NULL;                 // Puntero para la Pila Historial
+
+// OPERACIONES DE LA LISTA ENLAZADA SIMPLE
+
+void registrarProceso() {
+    int idBuscar;
+    cout << "Ingrese el ID del proceso (Numero entero): ";
+    cin >> idBuscar;
+
+    Nodo* aux = listaGeneral;
+    while (aux != NULL) {
+        if (aux->entrada.id == idBuscar) {
+            cout << "Error: Este ID ya existe. Intente con otro." << endl;
+            return;
+        }
+        aux = aux->sig;
+    }
+
+    Nodo* nuevo = new Nodo();
+    nuevo->entrada.id = idBuscar;
+
+    cout << "Ingrese Nombre del proceso: ";
+    cin.ignore();
+	getline(cin, nuevo->entrada.nombre);
+
+    cout << "Ingrese Prioridad (Alta, Media, Baja): ";
+    cin >> nuevo->entrada.prioridad;
+
+    cout << "Ingrese cantidad de memoria (KB): ";
+    cin >> nuevo->entrada.memoria;
+
+    nuevo->entrada.estado = "Listo"; // Todo proceso inicia en listo
+
+    // Insertar al inicio de la lista enlazada simple
+    nuevo->sig = listaGeneral;
+    listaGeneral = nuevo;
+
+    cout << "Proceso registrado en la lista con exito." << endl;
+}
+
+void mostrarListaGeneral() {
+    if (listaGeneral == NULL) {
+        cout << "La lista general esta vacia." << endl;
+        return;
+    }
+    
+    Nodo* aux = listaGeneral;
+    cout << "\n--- LISTA GENERAL DE PROCESOS ---" << endl;
+    while (aux != NULL) {
+        cout << "ID: " << aux->entrada.id 
+             << " | Nombre: " << aux->entrada.nombre 
+             << " | Prio: " << aux->entrada.prioridad 
+             << " | Memoria: " << aux->entrada.memoria << " KB"
+             << " | Estado: " << aux->entrada.estado << endl;
+        aux = aux->sig;
+    }
+}
